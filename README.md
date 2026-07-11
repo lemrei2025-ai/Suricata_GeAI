@@ -115,9 +115,19 @@ source venv/bin/activate
 pip install requests
 ```
 
+### Obtener la clave de Groq (GenAI gratis, sin tarjeta)
+
+1. Ve a **https://console.groq.com** y regístrate con tu correo o cuenta de Google.
+2. En el menú lateral entra a **API Keys**.
+3. Haz clic en **Create API Key**, ponle un nombre (ej. `taller-suricata`).
+4. Copia la clave inmediatamente (empieza con `gsk_...`), Groq solo la muestra una vez.
+5. No se necesita tarjeta de crédito ni configurar facturación — el nivel
+   gratuito alcanza perfectamente para este taller (decenas de miles de
+   peticiones al día).
+
 Edita `.env` con tus datos reales:
 
-- `ANTHROPIC_API_KEY`: tu clave de la API de Anthropic (nunca la subas a git).
+- `GROQ_API_KEY`: la clave que acabas de generar (nunca la subas a git).
 - `SMTP_USER` / `SMTP_PASS`: si usas Gmail, genera una "contraseña de aplicación"
   (no tu contraseña normal de la cuenta).
 - `EMAIL_TO`: correos del equipo SOC, separados por comas.
@@ -185,6 +195,10 @@ el analista SOC debería siempre verificar:
    análisis más rico.
 5. **No envíes datos sensibles innecesarios** al proveedor GenAI (por ejemplo,
    payloads con credenciales o PII); considera enmascararlos antes de enviar.
+   Ten en cuenta que, en el nivel gratuito de Groq (igual que en la mayoría de
+   niveles gratuitos de otros proveedores), los datos enviados pueden usarse
+   para mejorar sus modelos — no uses el taller con tráfico real sensible de
+   producción, solo con la regla de prueba u otro tráfico no confidencial.
 6. **Manejo de errores**: si la API de GenAI falla, el script ya envía un
    correo con la info cruda para que el analista no pierda la alerta.
 7. **Alta disponibilidad**: `Restart=always` en el systemd unit asegura que

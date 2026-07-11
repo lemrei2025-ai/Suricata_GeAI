@@ -3,8 +3,9 @@
 suricata_genai_watcher.py
 --------------------------------
 Vigila el archivo eve.json de Suricata en tiempo real, envía cada
-alerta nueva a un modelo GenAI (Claude, vía API de Anthropic) para
-que la analice, y envía un correo con:
+alerta nueva a un modelo GenAI (Llama 3.3 70B, vía la API GRATUITA
+de Groq, sin tarjeta de crédito) para que la analice, y envía un
+correo con:
   - Resumen del evento
   - Clasificación de severidad / tipo de ataque probable
   - Análisis técnico
@@ -33,9 +34,9 @@ import requests  # pip install requests
 
 EVE_JSON_PATH = os.environ.get("EVE_JSON_PATH", "/var/log/suricata/eve.json")
 
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
-ANTHROPIC_MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-6")
-ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
@@ -111,7 +112,7 @@ def should_dedup(event):
 
 
 # ----------------------------------------------------------------------
-# 3. ANÁLISIS CON GenAI (Claude vía API de Anthropic)
+# 3. ANÁLISIS CON GenAI (Llama 3.3 70B vía API gratuita de Groq)
 # ----------------------------------------------------------------------
 ANALYSIS_SYSTEM_PROMPT = """Eres un analista SOC (Security Operations Center) senior.
 Recibirás un evento JSON generado por Suricata (IDS/IPS). Debes responder
@@ -140,33 +141,32 @@ en analisis_tecnico. Sé preciso y accionable."""
 
 def analyze_with_genai(event):
     headers = {
-        "x-api-key": ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json",
     }
     payload = {
-        "model": ANTHROPIC_MODEL,
+        "model": GROQ_MODEL,
         "max_tokens": 1500,
-        "system": ANALYSIS_SYSTEM_PROMPT,
+        "temperature": 0.2,
+        "response_format": {"type": "json_object"},  # fuerza salida JSON válida
         "messages": [
+            {"role": "system", "content": ANALYSIS_SYSTEM_PROMPT},
             {
                 "role": "user",
                 "content": f"Evento Suricata a analizar:\n{json.dumps(event, indent=2, ensure_ascii=False)}",
-            }
+            },
         ],
     }
 
     try:
-        resp = requests.post(ANTHROPIC_URL, headers=headers, json=payload, timeout=30)
+        resp = requests.post(GROQ_URL, headers=headers, json=payload, timeout=30)
         resp.raise_for_status()
         data = resp.json()
-        text = "".join(
-            block.get("text", "") for block in data.get("content", []) if block.get("type") == "text"
-        )
+        text = data["choices"][0]["message"]["content"]
         text = text.strip().strip("```json").strip("```").strip()
         return json.loads(text)
     except Exception as e:
-        logging.error(f"Error consultando GenAI: {e}")
+        logging.error(f"Error consultando GenAI (Groq): {e}")
         return {
             "resumen_ejecutivo": "No se pudo obtener análisis automático (fallo de API).",
             "severidad_estimada": "Desconocida",

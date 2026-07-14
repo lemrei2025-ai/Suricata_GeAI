@@ -29,17 +29,7 @@ Tráfico de red
 
 ## Paso 1 — Instalar Suricata
 
-En Ubuntu/Debian:
-
-```bash
-sudo apt update
-sudo apt install -y suricata jq
-```
-
-Verifica la instalación:
-
-```bash
-suricata --build-info
+Seguir el taller en https://github.com/lemrei2025-ai/Suricata-CentOS-Stream
 ```
 
 Identifica tu interfaz de red (para el modo IDS pasivo):
